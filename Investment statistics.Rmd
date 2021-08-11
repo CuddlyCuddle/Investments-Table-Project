@@ -1,0 +1,62 @@
+---
+title: "Median_Comparison"
+output: html_document
+params: 
+  t1: 
+  t2:
+  t3:
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(dplyr)
+library(xts)
+library(quantmod)
+library(plotly)
+library(ggplot2)
+library(reactable)
+library(tidyr)
+library(purrr)
+
+```
+
+## Inputs
+```{r}
+Picks <- c(paste(c("BTC", "ETH", "LTC", "ALGO", "UNI3"), "USD", sep = "-"), "^IXIC", "^GSPC")
+input1 <- HLC # (High, Low, Close) or Close
+```
+
+## Functions
+```{r}
+GetDT <- function(x){
+data <- lapply(x, function(x) getSymbols(x, auto.assign = F))
+for(i in 1:length(x)){
+  colnames(data[[i]]) <- c("Open", "High", "Low", "Close", "Volume", "Adjusted")
+  data[[i]] <- as.data.frame(coredata(data[[i]])) 
+}
+nDF <- data.frame(Asset = x, data = tibble(data))
+return(nDF)
+}
+
+Data <- GetDT(Picks)
+
+```
+
+```{r}
+TableData <- Data %>% 
+  unnest() %>%
+  group_by(Asset) %>%
+  mutate(Returns = c(NA, diff(log(Close)))) %>%
+  summarize(mean = round(mean(Returns,  na.rm = T), 5) * 100,
+            median = round(median(Returns,  na.rm = T), 5) * 100,
+            Cumulative = round(sum(Returns,  na.rm = T), 5) * 100,
+            StandardDeviation = round(sd(Returns,  na.rm = T), 5) * 100,
+            Q95 = round(quantile(Returns, probs = .95, na.rm = T), 5) * 100,
+            Q75 = round(quantile(Returns, probs = .75, na.rm = T), 5) * 100,
+            Q25 = round(quantile(Returns, probs = .25, na.rm = T), 5) * 100,
+            Q5 = round(quantile(Returns, probs = .05, na.rm = T), 5) * 100,
+            Min = round(min(Returns, na.rm = T), 5) * 100,
+            Max = round(max(Returns, na.rm = T), 5) * 100
+            )
+```
+
